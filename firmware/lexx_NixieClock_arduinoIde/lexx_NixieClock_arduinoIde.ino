@@ -6,6 +6,10 @@
   Автор: AlexGyver Technologies, 2018
   https://AlexGyver.ru/
 */
+/**********************************
+**        LexxQQ Edition         **
+**        LexxQQ Edition         **
+**********************************/
 /*
   SET
   - удержали в режиме часов - настройка БУДИЛЬНИКА
@@ -16,11 +20,14 @@
   ALARM_PIN - вкл/выкл будильник
 */
 // ************************** НАСТРОЙКИ **************************
-#define BULB_TYPE  2  // 1 = (ИН-14 + ИН-16)  // 2 = (ИН-12)
-#define IS_DS18B20_ENABLED  true // отображать ли температуру "как чувствуется человеком"
+#define BULB_TYPE  1  // 1 = (ИН-14 + ИН-16)  // 2 = (ИН-12)
+#if BULB_TYPE == 2
+#define IN12_WITH_SECONDS true  // (ТОЛЬКО для ИН-12) true = ЕСТЬ секундные индикаторы. false = НЕТ секундных индикаторов. Если НЕТ - то влажность будет отображаться на "минутных" индикаторах, иначе - в секундных
+#endif
+#define IS_DS18B20_ENABLED  true // включён ли второй датчик температуры. Если включён, то его значение заменяет температуру "как чувствуется человеком"
 #define IS_HEAT_INDEX_ENABLED  false // отображать ли температуру "как чувствуется человеком"
 #define BL_ENABLED  false // включена ли подсветка на WS2812B
-#define AUTO_NIGHT_ENABLED  true // автоматическая яркость, исходя из освещенности комнаты
+#define AUTO_NIGHT_ENABLED  false // автоматическая яркость, исходя из освещенности комнаты
 
 #define INDICATOR_QTY 7	// количество индикаторов (Dots) (H)(H) (M)(M) (S)(S)
 #define BRIGHT 100	// яркость цифр дневная, %
@@ -197,8 +204,13 @@ void sendTemperature(byte tt, byte hh, byte heatIndex) {
     digitsDraw[m1Index] = 10;
   }
 
+#if BULB_TYPE == 2 && !IN12_WITH_SECONDS
+  digitsDraw[m0Index] = (byte)(hh / 10);
+  digitsDraw[m1Index] = (byte)(hh % 10);
+#else
   digitsDraw[s0Index] = (byte)(hh / 10);
   digitsDraw[s1Index] = (byte)(hh % 10);
+#endif
 }
 
 // включение режима и запуск таймера
@@ -694,12 +706,40 @@ void FillLEDsFromPaletteColors(uint8_t colorIndex)
 }
 #endif
 
-void ConfigurePwm() {
-  TCCR2A = TCCR2A & 0b11111000 | 0x01;
 #if !IS_DS18B20_ENABLED
-  analogWrite(DS18B20_PIN, 130); // Функция переводит вывод в режим ШИМ и задает для него коэффициент заполнения (ШИМ=50.9% (значение 0 до 255))
-#endif
+void ConfigurePwm() {
+  // PWM frequency for D3 & D11:
+  TCCR2B = TCCR2B & B11111000 | B00000001; // for PWM frequency of 31372.55 Hz
+  // TCCR2B = TCCR2B & B11111000 | B00000010; // for PWM frequency of 3921.16 Hz
+  // TCCR2B = TCCR2B & B11111000 | B00000011; // for PWM frequency of 980.39 Hz
+  // TCCR2B = TCCR2B & B11111000 | B00000100; // for PWM frequency of 490.20 Hz (The DEFAULT)
+  // TCCR2B = TCCR2B & B11111000 | B00000101; // for PWM frequency of 245.10 Hz
+  // TCCR2B = TCCR2B & B11111000 | B00000110; // for PWM frequency of 122.55 Hz
+  // TCCR2B = TCCR2B & B11111000 | B00000111; // for PWM frequency of 30.64 Hz
+
+  // PWM frequency for D5 & D6: (interactions with the millis() and delay() functions)
+  // TCCR0B = TCCR0B & B11111000 | B00000001; // for PWM frequency of 62500.00 Hz
+  // TCCR0B = TCCR0B & B11111000 | B00000010; // for PWM frequency of 7812.50 Hz
+  // TCCR0B = TCCR0B & B11111000 | B00000011; // for PWM frequency of 976.56 Hz (The DEFAULT)
+  // TCCR0B = TCCR0B & B11111000 | B00000100; // for PWM frequency of 244.14 Hz
+  // TCCR0B = TCCR0B & B11111000 | B00000101; // for PWM frequency of 61.04 Hz
+
+  // PWM frequency for D9 & D10:
+  // TCCR1B = TCCR1B & B11111000 | B00000001; // set timer 1 divisor to 1 for PWM frequency of 31372.55 Hz
+  // TCCR1B = TCCR1B & B11111000 | B00000010; // for PWM frequency of 3921.16 Hz
+  // TCCR1B = TCCR1B & B11111000 | B00000011; // for PWM frequency of 490.20 Hz (The DEFAULT)
+  // TCCR1B = TCCR1B & B11111000 | B00000100; // for PWM frequency of 122.55 Hz
+  // TCCR1B = TCCR1B & B11111000 | B00000101; // for PWM frequency of 30.64 Hz
+
+  // PWM values for D11:
+  // 180 = 170V
+  // 170 = 168V
+  // 160 = 162V
+  // 150 = 161V
+  // 140 = 155V
+  analogWrite(11, 140); // Функция переводит вывод в режим ШИМ и задает для него коэффициент заполнения (значение 0 до 255)
 }
+#endif
 
 void tmrFade_Event() {
   if (mode != Clock)
@@ -764,7 +804,9 @@ void setup() {
   tmrAlarm.stop();
   tmrFade.stop();
 
-  // ConfigurePwm();
+#if !IS_DS18B20_ENABLED
+  ConfigurePwm();
+#endif
 
 #if !BL_ENABLED
   //Serial.begin(9600);
