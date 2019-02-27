@@ -772,12 +772,21 @@ void tmrTest_Event() {
 byte scrollPosition = 0;
 void tmrScroll_Event() {
 	// digitsDraw[scrollPosition] = digitsDraw[scrollPosition + 1];
-	digitsDraw[h0Index] = digitsDraw[h1Index];
-	digitsDraw[h1Index] = digitsDraw[m0Index];
-	digitsDraw[m0Index] = digitsDraw[m1Index];
-	digitsDraw[m1Index] = digitsDraw[s0Index];
-	digitsDraw[s0Index] = digitsDraw[s1Index];
-	digitsDraw[s1Index] = 10;
+	if (mode == Clock) {
+		digitsDraw[h0Index] = digitsDraw[h1Index];
+		digitsDraw[h1Index] = digitsDraw[m0Index];
+		digitsDraw[m0Index] = digitsDraw[m1Index];
+		digitsDraw[m1Index] = digitsDraw[s0Index];
+		digitsDraw[s0Index] = digitsDraw[s1Index];
+		digitsDraw[s1Index] = 10;
+	} else {
+		digitsDraw[s1Index] = digitsDraw[s0Index];
+		digitsDraw[s0Index] = digitsDraw[m1Index];
+		digitsDraw[m1Index] = digitsDraw[m0Index];
+		digitsDraw[m0Index] = digitsDraw[h1Index];
+		digitsDraw[h1Index] = digitsDraw[h0Index];
+		digitsDraw[h0Index] = 10;
+	}
 
 	if (scrollPosition++ >= INDICATOR_QTY) {
 		scrollPosition = 0;
