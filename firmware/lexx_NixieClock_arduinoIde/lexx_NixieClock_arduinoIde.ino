@@ -25,26 +25,27 @@
 #define IN12_WITH_SECONDS true  // (ТОЛЬКО для ИН-12) true = ЕСТЬ секундные индикаторы. false = НЕТ секундных индикаторов. Если НЕТ - то влажность будет отображаться на "минутных" индикаторах, иначе - в секундных
 #endif
 #define IS_DS18B20_ENABLED  false // включён ли второй датчик температуры. Если включён, то его значение заменяет температуру "как чувствуется человеком"
+
 #define IS_HEAT_INDEX_ENABLED  false // отображать ли температуру "как чувствуется человеком"
 #define BL_ENABLED  false // включена ли подсветка на WS2812B
 #define AUTO_NIGHT_ENABLED  false // автоматическая яркость, исходя из освещенности комнаты
 
 #define INDICATOR_QTY 7	// количество индикаторов (Dots) (H)(H) (M)(M) (S)(S)
 #define BRIGHT 100	// яркость цифр дневная, %
-#define BRIGHT_NIGHT 30	// яркость ночная, % // 20
+#define BRIGHT_NIGHT 50	// яркость ночная, % // 20
 #define NIGHT_START 20	// час перехода на ночную подсветку (BRIGHT_NIGHT)
 #define NIGHT_END 8	// час перехода на дневную подсветку (BRIGHT) // 7
 
-#define CLOCK_TIME_s 10	// время (с), которое отображаются часы
-#define TEMPERATURE_TIME_s 5	// время (с), которое отображается температура и влажность
+#define CLOCK_TIME_s  10	// время (с), которое отображаются часы
+#define TEMPERATURE_TIME_s  5	// время (с), которое отображается температура и влажность
 #define ALARM_TIMEOUT_s 30	// таймаут будильника
-#define ALARM_FREQ 900	// частота писка будильника
+#define ALARM_FREQ  900	// частота писка будильника
 
 /* !!!!!!!!!!!! ДЛЯ РАЗРАБОТЧИКОВ !!!!!!!!!!!! */
 #define BURN_TIME_us 200	// период обхода в режиме очистки (мкс) // 200
 
 #define REDRAW_TIME_us 3000	// время цикла одной цифры (мкс) // 3000
-#define ON_TIME_us 1000	// время включенности одной цифры (мкс) (при 100% яркости) // 2200
+#define ON_TIME_us 2200  //  1000	// время включенности одной цифры (мкс) (при 100% яркости) // 2200
 
 // пины
 #define PIEZO_PORT 3
@@ -99,7 +100,7 @@ GTimer_ms tmrDots(500); // таймер мигания точек
 GTimer_ms tmrBlink(BLINK_ON_ms); // таймер мигания цифры в нестройках
 GTimer_ms tmrAlarm(ALARM_TIMEOUT_ms);
 GTimer_ms tmrFade(2);
-GTimer_ms tmrTest(125);
+GTimer_ms tmrTest(100);
 GTimer_ms tmrScroll(200);
 
 #include "GyverButton.h"
@@ -592,6 +593,7 @@ void tmrDots_Event() {
 		else {
 			if (mode == Clock)
 			{
+				isDot = false;
 				tmrFade.start();
 			}
 			else {
@@ -599,7 +601,9 @@ void tmrDots_Event() {
 			}
 		}
 
-		// мигать на будильнике
+		//digitalWrite(LED_BUILTIN, isDot);   // turn the LED on (HIGH is the voltage level)
+
+			// мигать на будильнике
 		if (isAlarm) {
 			if (!isDot) {
 				noTone(PIEZO_PORT);
@@ -671,7 +675,7 @@ void tmrMode_Event() {
 #if BL_ENABLED
 	setBackLight();
 #endif
-}
+	}
 
 #if BL_ENABLED
 void FillLEDsFromPaletteColors(uint8_t colorIndex)
@@ -779,7 +783,8 @@ void tmrScroll_Event() {
 		digitsDraw[m1Index] = digitsDraw[s0Index];
 		digitsDraw[s0Index] = digitsDraw[s1Index];
 		digitsDraw[s1Index] = 10;
-	} else {
+	}
+	else {
 		digitsDraw[s1Index] = digitsDraw[s0Index];
 		digitsDraw[s0Index] = digitsDraw[m1Index];
 		digitsDraw[m1Index] = digitsDraw[m0Index];
@@ -787,7 +792,6 @@ void tmrScroll_Event() {
 		digitsDraw[h1Index] = digitsDraw[h0Index];
 		digitsDraw[h0Index] = 10;
 	}
-
 	if (scrollPosition++ >= INDICATOR_QTY) {
 		scrollPosition = 0;
 		tmrScroll.stop();
@@ -806,11 +810,11 @@ void tmrScroll_Event() {
 			if (ds18b20.isConversionComplete()) {
 				float ds18b20Temperature = ds18b20.getTempCByIndex(0);
 				heatIndex = ds18b20Temperature; // вывод на минутные индикаторы
-			}
+		}
 #endif
 			sendTemperature(temp, hum, heatIndex);
 			setMode(Temperature);
-		}
+	}
 		else {
 			DateTime now = ds3231Rtc.now(); // синхронизация с RTC
 			second = now.second();
@@ -820,7 +824,7 @@ void tmrScroll_Event() {
 			setMode(Clock);
 		}
 
-	}
+}
 }
 
 //
@@ -834,7 +838,7 @@ void setup() {
 	tmrFade.stop();
 	tmrScroll.stop();
 #if !IS_DS18B20_ENABLED
-	ConfigurePwm();
+	//ConfigurePwm();
 #endif
 
 #if !BL_ENABLED
@@ -849,6 +853,7 @@ void setup() {
 	if (ds3231Rtc.lostPower()) {
 		ds3231Rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); // following line sets the RTC to the date & time this sketch was compiled
 	}
+	// ds3231Rtc.adjust(DateTime(F(__DATE__), F(__TIME__))); // following line sets the RTC to the date & time this sketch was compiled
 	DateTime now = ds3231Rtc.now();
 	second = now.second();
 	minute = now.minute();
@@ -898,6 +903,8 @@ void setup() {
 
 	sendTime(hour, minute, second);
 	changeBright();
+
+	pinMode(LED_BUILTIN, OUTPUT);
 }
 
 // главный цикл
